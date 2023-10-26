@@ -183,6 +183,7 @@ def make_scenario(debug=False, oracle=False):
             for dataset in datasets[1:]:
                 datasets[0].data += dataset.data
                 datasets[0].targets += dataset.targets
+            random.shuffle(datasets[0].data)
         train_datasets = train_datasets[:1]
         dev_datasets = dev_datasets[:1]
 
