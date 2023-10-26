@@ -149,7 +149,6 @@ if __name__ == '__main__':
 
     if args.debug:
         args.name = 'debug'
-        args.strategy = 'replay'
         args.n_epoch = 1
 
     print(args)
