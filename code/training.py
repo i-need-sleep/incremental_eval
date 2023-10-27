@@ -153,9 +153,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if args.debug:
-        args.name = 'debug'
-        args.n_epoch = 1
+    # if args.debug:
+        # args.name = 'debug'
+        # args.n_epoch = 1
 
     print(args)
     train(args)
