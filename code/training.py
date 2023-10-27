@@ -3,6 +3,7 @@ import argparse
 import datetime
 
 import torch
+import numpy as np
 from scipy.stats import pearsonr
 import avalanche
 import comet
@@ -118,6 +119,11 @@ def eval(model, test_stream, args, training_idx):
                 scores += score
         
         # Get pearson correlation
+        model_out = np.array(model_outs)
+        model_out = np.nan_to_num(model_out)
+        score = np.array(scores)
+        score = np.nan_to_num(score)
+
         pearson = pearsonr(model_outs, scores).statistic
         print(f'Training {training_idx}, Testing {exp_idx}, Pearson {pearson}')
 
