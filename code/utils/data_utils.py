@@ -163,7 +163,7 @@ class RelativeRankDataset(torch.utils.data.Dataset):
             line = df.iloc[i]
             out.append([line['src'], line['ref'], line['pred'], line['score']])
 
-            if self.debug and i >1000:
+            if self.debug and i >500:
                 break
         return out
     
