@@ -111,7 +111,10 @@ def convert_mqm_22(path):
 class RelativeRankDataset(torch.utils.data.Dataset):
     def __init__(self, path, debug=False, type='train'):
         self.debug = debug
-        self.df = pd.read_csv(path)
+        
+        df = pd.read_csv(path)
+        # Remove lines without scores
+        self.df = df[df['score'].notna()]
 
         if type == 'train':
             self.data = self.make_pairs(self.df)
