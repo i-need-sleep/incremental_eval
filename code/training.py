@@ -121,8 +121,8 @@ def eval(model, test_stream, args, training_idx):
         # Get pearson correlation
         model_out = np.array(model_outs)
         model_out = np.nan_to_num(model_out)
-        score = np.array(scores)
-        score = np.nan_to_num(score)
+        scores = np.array(scores)
+        scores = np.nan_to_num(scores)
 
         pearson = pearsonr(model_outs, scores).statistic
         print(f'Training {training_idx}, Testing {exp_idx}, Pearson {pearson}')
