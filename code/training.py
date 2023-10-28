@@ -119,12 +119,7 @@ def eval(model, test_stream, args, training_idx):
                 scores += score
         
         # Get pearson correlation
-        model_out = np.array(model_outs)
-        model_out = np.nan_to_num(model_out)
-        scores = np.array(scores)
-        scores = np.nan_to_num(scores)
-
-        pearson = pearsonr(model_outs, scores).statistic
+        pearson = pearsonr(model_outs, scores).statistic * -1 # COMET-RANK is a distance metric, so we need to invert the correlation
         print(f'Training {training_idx}, Testing {exp_idx}, Pearson {pearson}')
 
         # Save the output
