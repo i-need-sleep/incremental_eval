@@ -156,7 +156,7 @@ class RelativeRankDataset(torch.utils.data.Dataset):
                     pairs.append([src, line_i['ref'], worse_pred, better_pred])
             if self.debug:
                 pairs = pairs[:1000]
-                # break
+                break
         random.shuffle(pairs)
         return pairs
     
@@ -166,7 +166,7 @@ class RelativeRankDataset(torch.utils.data.Dataset):
             line = df.iloc[i]
             out.append([line['src'], line['ref'], line['pred'], line['score']])
 
-            if self.debug and i > 250:
+            if self.debug and i > 5:
                 break
         return out
     

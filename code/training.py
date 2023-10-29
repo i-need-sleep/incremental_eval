@@ -70,10 +70,9 @@ def train(args):
         raise NotImplementedError
     
     # Patch the strategy
-    patches.patch(strategy, model, strategy_type=args.strategy)
+    patches.patch(strategy, model, scenario, strategy_type=args.strategy)
 
     # Train
-    out = []
     for i, exp in enumerate(scenario.train_stream):
         model.train()
         strategy.train(exp)
@@ -148,9 +147,10 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # if args.debug:
-        # args.name = 'debug'
-        # args.n_epoch = 1
+    if args.debug:
+        args.name = 'debug'
+        args.strategy = 'naive'
+        args.n_epoch = 1
 
     print(args)
     train(args)

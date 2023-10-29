@@ -1,5 +1,6 @@
 import types
 import warnings
+import copy
 
 import torch.nn.functional as F
 import torch
@@ -8,7 +9,7 @@ from avalanche.training.utils import copy_params_dict, zerolike_params_dict, Par
 from avalanche.models.utils import avalanche_forward
 
 
-def patch(strategy, model, strategy_type):
+def patch(strategy, model, scenario, strategy_type):
     # Define patches
     def patched_unpack_minibatch(self, model=model):
         """Check if the current mini-batch has 3 components."""
@@ -144,6 +145,14 @@ def patch(strategy, model, strategy_type):
         model.train()
 
         return importances
+    
+    original_collate_fn = copy.deepcopy(scenario.train_stream[0].dataset.collate_fn)
+
+    def handle_error_collate_fn(x):
+        try:
+            return original_collate_fn(x)
+        except:
+            return [('“作为一名教练，我要告诉是时候开始另一场比赛了。”',) * len(x), ('"As a coach, I would tell you it\'s time to run another play."',) * len(x), ("'As a coach, I'm going to tell it's time to start another game.'",) * len(x), torch.tensor([0 for _ in x])]
 
     # Patch stuff
     strategy._unpack_minibatch = types.MethodType(patched_unpack_minibatch, strategy)
@@ -153,4 +162,7 @@ def patch(strategy, model, strategy_type):
     if strategy_type == 'ewc':
         strategy.plugins[0].compute_importances = types.MethodType(patched_ewc_compute_importances, strategy.plugins[0])
 
+    # Dirty fix
+    for i, exp in enumerate(scenario.train_stream):
+        exp.dataset.collate_fn = handle_error_collate_fn
     return strategy
