@@ -181,14 +181,13 @@ def make_scenario(debug=False, oracle=False):
     dev_datasets = [RelativeRankDataset(f'{uglobals.PROCESSED_DIR}/{year}_dev.csv', debug=debug, type='test') for year in range(2017, 2023)]
 
     if oracle:
-        # Pool all train/dev data together
-        for datasets in [train_datasets, dev_datasets]:
+        # Pool all train data together
+        for datasets in [train_datasets]:
             for dataset in datasets[1:]:
                 datasets[0].data += dataset.data
                 datasets[0].targets += dataset.targets
             random.shuffle(datasets[0].data)
         train_datasets = train_datasets[:1]
-        dev_datasets = dev_datasets[:1]
 
     scenario = avalanche.benchmarks.generators.dataset_benchmark(train_datasets, dev_datasets)
     return scenario
