@@ -22,6 +22,8 @@ source /apps/local/anaconda3/bin/activate adv          # 调用 virtual env
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
 export HF_HOME=/l/users/yichen.huang/misc/cache
 python -u training.py \
-    --name train_oracle \
-    --strategy oracle
+    --name train_oracle_3epo_3e-7 \
+    --strategy oracle \
+    --batch_size 10 \
+    --lr 3e-7
 echo "FINISH"                       # 输出起始信息

@@ -23,5 +23,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
 export HF_HOME=/l/users/yichen.huang/misc/cache
 python -u training.py \
     --name train_ewc \
-    --strategy ewc
+    --strategy ewc \
+    --batch_size 6 \
+    --n_epoch 2
 echo "FINISH"                       # 输出起始信息

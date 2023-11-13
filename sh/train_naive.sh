@@ -23,5 +23,6 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib/
 export HF_HOME=/l/users/yichen.huang/misc/cache
 python -u training.py \
     --name train_naive \
-    --strategy naive
+    --strategy naive \
+    --batch_size 10
 echo "FINISH"                       # 输出起始信息

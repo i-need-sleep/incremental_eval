@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument('--strategy', default='', type=str) # naive, ewc, replay, oracle
 
     # Training
-    parser.add_argument('--lr', default='3e-5', type=float)
+    parser.add_argument('--lr', default='3e-6', type=float)
     parser.add_argument('--batch_size', default='16', type=int)
     parser.add_argument('--n_epoch', default='3', type=int)
 
