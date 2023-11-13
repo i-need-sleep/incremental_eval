@@ -115,6 +115,10 @@ class RelativeRankDataset(torch.utils.data.Dataset):
         df = pd.read_csv(path)
         # Remove lines without scores
         self.df = df[df['score'].notna()]
+        
+        if debug:
+            self.df = self.df.sort_values(by='src')
+            self.df = self.df[:50]
 
         if type == 'train':
             self.data = self.make_pairs(self.df)
@@ -129,7 +133,7 @@ class RelativeRankDataset(torch.utils.data.Dataset):
         self.targets = [year] * len(self.data) # Dummy for Avalanche
 
     def make_pairs(self, df):
-        pairs = [] # [{src, ref, pos, neg}]
+        pairs = [] # [[src, ref, pos, neg], ...]
 
         srcs = list(df['src'].unique())
         random.shuffle(srcs)
@@ -154,9 +158,6 @@ class RelativeRankDataset(torch.utils.data.Dataset):
                         better_pred = line_i['pred']
 
                     pairs.append([src, line_i['ref'], worse_pred, better_pred])
-            if self.debug:
-                pairs = pairs[:1000]
-                break
         random.shuffle(pairs)
         return pairs
     
@@ -166,8 +167,6 @@ class RelativeRankDataset(torch.utils.data.Dataset):
             line = df.iloc[i]
             out.append([line['src'], line['ref'], line['pred'], line['score']])
 
-            if self.debug and i > 5:
-                break
         return out
     
     def __len__(self):
@@ -178,6 +177,22 @@ class RelativeRankDataset(torch.utils.data.Dataset):
     
 def make_scenario(debug=False, oracle=False):
     train_datasets = [RelativeRankDataset(f'{uglobals.PROCESSED_DIR}/{year}_train.csv', debug=debug) for year in range(2017, 2023)]
+    dev_datasets = [RelativeRankDataset(f'{uglobals.PROCESSED_DIR}/{year}_dev.csv', debug=debug, type='test') for year in range(2017, 2023)]
+
+    if oracle:
+        # Pool all train data together
+        for datasets in [train_datasets]:
+            for dataset in datasets[1:]:
+                datasets[0].data += dataset.data
+                datasets[0].targets += dataset.targets
+            random.shuffle(datasets[0].data)
+        train_datasets = train_datasets[:1]
+
+    scenario = avalanche.benchmarks.generators.dataset_benchmark(train_datasets, dev_datasets)
+    return scenario
+
+def make_eval_on_train_scenario(debug=False, oracle=False):
+    train_datasets = [RelativeRankDataset(f'{uglobals.PROCESSED_DIR}/{year}_train.csv', debug=debug, type='test') for year in range(2017, 2023)]
     dev_datasets = [RelativeRankDataset(f'{uglobals.PROCESSED_DIR}/{year}_dev.csv', debug=debug, type='test') for year in range(2017, 2023)]
 
     if oracle:

@@ -9,7 +9,7 @@ from avalanche.training.utils import copy_params_dict, zerolike_params_dict, Par
 from avalanche.models.utils import avalanche_forward
 
 
-def patch(strategy, model, scenario, strategy_type):
+def patch(args, strategy, model, scenario, strategy_type, anchor):
     # Define patches
     def patched_unpack_minibatch(self, model=model):
         """Check if the current mini-batch has 3 components."""
@@ -49,9 +49,26 @@ def patch(strategy, model, scenario, strategy_type):
         pos_sentemb = self.get_sentence_embedding(pos_input_ids, pos_attention_mask)
         neg_sentemb = self.get_sentence_embedding(neg_input_ids, neg_attention_mask)
 
-        loss = self.loss(src_sentemb, pos_sentemb, neg_sentemb) + self.loss(
-            ref_sentemb, pos_sentemb, neg_sentemb
-        )
+        if self.anchor == '':
+            loss = self.loss(src_sentemb, pos_sentemb, neg_sentemb) + self.loss(
+                ref_sentemb, pos_sentemb, neg_sentemb
+            )
+        elif self.anchor == 'worse':
+            try:
+                emb_worse_anchors = []
+                for i in range(src_sentemb.shape[0]):
+                    emb_worse_anchors.append(self.anchor_preds[batch['neg_input_ids'][i]])
+                
+                emb_worse_anchors = torch.stack(emb_worse_anchors).to(self.device)
+                loss = self.loss(src_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \
+                    + self.loss(ref_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \
+                    + self.anchor_loss_scale * self.loss(emb_worse_anchors, neg_sentemb, torch.zeros_like(pos_sentemb))
+            except:
+                print('Worse emb not found!!!')
+                loss = self.loss(src_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \
+                    + self.loss(ref_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb))
+        else:
+            raise NotImplementedError
 
         distance_src_pos = F.pairwise_distance(pos_sentemb, src_sentemb)
         distance_ref_pos = F.pairwise_distance(pos_sentemb, ref_sentemb)
@@ -71,6 +88,7 @@ def patch(strategy, model, scenario, strategy_type):
             "loss": loss,
             "distance_pos": distance_pos,
             "distance_neg": distance_neg,
+            'embedding_neg': neg_sentemb,
         }
     
     def patched_criterion(self):
@@ -155,6 +173,8 @@ def patch(strategy, model, scenario, strategy_type):
             return [('“作为一名教练，我要告诉是时候开始另一场比赛了。”',) * len(x), ('"As a coach, I would tell you it\'s time to run another play."',) * len(x), ("'As a coach, I'm going to tell it's time to start another game.'",) * len(x), torch.tensor([0 for _ in x])]
 
     # Patch stuff
+    model.anchor = ''
+    model.anchor_loss_scale = args.anchor_loss_scale
     strategy._unpack_minibatch = types.MethodType(patched_unpack_minibatch, strategy)
     model.forward = types.MethodType(patched_forward, model)
     strategy.criterion = types.MethodType(patched_criterion, strategy)
