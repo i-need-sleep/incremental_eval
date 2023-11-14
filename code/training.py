@@ -77,15 +77,17 @@ def train(args):
     else:
         raise NotImplementedError
     
-    # Patch the strategy
-    patches.patch(args, strategy, model, scenario, strategy_type=args.strategy, anchor=args.anchor)
-
     # Load checkpoints
     # Strategy
     exp_counter = -1
     if args.strategy_checkpoint != '':
         strategy, exp_counter = maybe_load_checkpoint(strategy, args.strategy_checkpoint, map_location=device)
         print(f'Loading from checkpoint {args.strategy_checkpoint}, exp_counter: {exp_counter}')
+
+    # Patch the strategy
+    patches.patch(args, strategy, model, scenario, strategy_type=args.strategy, anchor=args.anchor)
+
+
 
     # Train
     for i, exp in enumerate(scenario.train_stream):
