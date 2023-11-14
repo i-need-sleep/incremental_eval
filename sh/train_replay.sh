@@ -25,5 +25,5 @@ python -u training.py \
     --name train_replay \
     --strategy replay \
     --batch_size 6 \
-    --n_epoch 2
+    --strategy_checkpoint ../results/checkpoints/train_replay/exp_4_strat.pt
 echo "FINISH"                       # 输出起始信息
