@@ -115,6 +115,7 @@ def train(args):
         print(f'Strategy saved at: {strategy_save_path}')
         
         # Eval
+        model.anchor = '' # Do not use anchors for eval
         eval(model, scenario.test_stream, args, i)
     return
 
