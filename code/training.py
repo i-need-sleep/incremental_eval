@@ -2,6 +2,7 @@ import os
 import argparse
 import datetime
 
+import pandas.core.indexes.numeric
 import torch
 import numpy as np
 from scipy.stats import pearsonr
@@ -81,17 +82,19 @@ def train(args):
     # Strategy
     exp_counter = -1
     if args.strategy_checkpoint != '':
+        
+        # Re-patch the strategy
+        patches.patch(args, strategy, model, scenario, strategy_type=args.strategy, anchor=args.anchor)
+
         strategy, exp_counter = maybe_load_checkpoint(strategy, args.strategy_checkpoint, map_location=device)
         print(f'Loading from checkpoint {args.strategy_checkpoint}, exp_counter: {exp_counter}')
 
     # Patch the strategy
     patches.patch(args, strategy, model, scenario, strategy_type=args.strategy, anchor=args.anchor)
 
-
-
     # Train
     for i, exp in enumerate(scenario.train_stream):
-        if i <= exp_counter:
+        if i < exp_counter:
             continue
 
         if args.anchor == 'worse' and (i > 0 or args.debug):
@@ -198,10 +201,10 @@ if __name__ == '__main__':
 
     if args.debug:
         args.name = 'debug'
-        args.strategy = 'naive'
+        args.strategy = 'replay'
         # args.anchor = 'worse'
         args.n_epoch = 1
-        # args.strategy_checkpoint = 'checkpoints/debug/exp_0_strat.pt'
+        args.strategy_checkpoint = '../results/checkpoints/replay/exp_4_strat.pt'
 
     print(args)
     train(args)

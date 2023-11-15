@@ -118,7 +118,7 @@ class RelativeRankDataset(torch.utils.data.Dataset):
         
         if debug:
             self.df = self.df.sort_values(by='src')
-            self.df = self.df[:50]
+            self.df = self.df[:10]
 
         if type == 'train':
             self.data = self.make_pairs(self.df)

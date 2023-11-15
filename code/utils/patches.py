@@ -5,6 +5,9 @@ import copy
 import torch.nn.functional as F
 import torch
 from torch.utils.data import DataLoader
+import avalanche
+import avalanche.training.plugins
+import comet
 from avalanche.training.utils import copy_params_dict, zerolike_params_dict, ParamData
 from avalanche.models.utils import avalanche_forward
 
@@ -185,4 +188,15 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
     # Dirty fix
     for i, exp in enumerate(scenario.train_stream):
         exp.dataset.collate_fn = handle_error_collate_fn
+
+    # For loading
+    avalanche.training.plugins.EWCPlugin.patched_ewc_compute_importances = patched_ewc_compute_importances
+    avalanche.training.EWC.patched_unpack_minibatch = patched_unpack_minibatch
+    avalanche.training.EWC.patched_criterion = patched_criterion
+
+    avalanche.training.Replay.patched_unpack_minibatch = patched_unpack_minibatch
+    avalanche.training.Replay.patched_criterion = patched_criterion
+    
+    comet.models.RankingMetric.patched_forward = patched_forward
+    
     return strategy
