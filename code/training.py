@@ -58,7 +58,7 @@ def train(args):
                 avalanche.evaluation.metrics.loss_metrics(minibatch=False, epoch=True, experience=True, stream=True), # Only log the loss for training
                 loggers=[avalanche.logging.InteractiveLogger()],
             ),
-            ewc_lambda = 0.4,
+            ewc_lambda = args.ewc_lambda,
         )
     elif args.strategy == 'replay':
         strategy = avalanche.training.Replay(
@@ -73,7 +73,7 @@ def train(args):
                 avalanche.evaluation.metrics.loss_metrics(minibatch=False, epoch=True, experience=True, stream=True), # Only log the loss for training
                 loggers=[avalanche.logging.InteractiveLogger()],
             ),
-            mem_size=1000
+            mem_size=args.replay_size,
         )
     else:
         raise NotImplementedError
@@ -184,15 +184,19 @@ if __name__ == '__main__':
     parser.add_argument('--name', type=str, default='unnamed')
     parser.add_argument('--debug', action='store_true')
 
-    # Formulation
+    # Strategy
     parser.add_argument('--strategy', default='', type=str) # naive, ewc, replay, oracle
+
     parser.add_argument('--anchor', default='', type=str) # worse
+    parser.add_argument('--anchor_loss_scale', default='1', type=float)
+
+    parser.add_argument('--ewc_lambda', default='0.4', type=float)
+    parser.add_argument('--replay_size', default='1000', type=int)
 
     # Training
     parser.add_argument('--lr', default='3e-6', type=float)
     parser.add_argument('--batch_size', default='16', type=int)
     parser.add_argument('--n_epoch', default='3', type=int)
-    parser.add_argument('--anchor_loss_scale', default='1', type=float)
 
     # Checkpoints
     parser.add_argument('--strategy_checkpoint', type=str, default='')
@@ -205,6 +209,5 @@ if __name__ == '__main__':
         # args.anchor = 'worse'
         args.n_epoch = 1
         args.strategy_checkpoint = '../results/checkpoints/replay/exp_4_strat.pt'
-
     print(args)
     train(args)
