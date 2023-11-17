@@ -60,7 +60,10 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
             try:
                 emb_worse_anchors = []
                 for i in range(src_sentemb.shape[0]):
-                    emb_worse_anchors.append(self.anchor_preds[batch['neg_input_ids'][i]])
+                    key = batch['neg_input_ids'][i]
+                    # Remove 1 paddings
+                    key = str(key[key != 1])
+                    emb_worse_anchors.append(self.anchor_preds[key])
                 
                 emb_worse_anchors = torch.stack(emb_worse_anchors).to(self.device)
                 loss = self.loss(src_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \

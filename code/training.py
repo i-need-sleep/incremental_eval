@@ -161,7 +161,10 @@ def eval(model, test_stream, args, training_idx, save=True, eval_exp_idx=None):
                 scores += score
 
                 for idx in range(emb.shape[0]):
-                    out[model_in['neg_input_ids'][idx]] = emb[idx]
+                    key = model_in['neg_input_ids'][idx]
+                    # Remove 1 paddings
+                    key = str(key[key != 1])
+                    out[key] = emb[idx]
 
         # Get pearson correlation
         pearson = pearsonr(model_outs, scores).statistic * -1 # COMET-RANK is a distance metric, so we need to invert the correlation
@@ -205,9 +208,9 @@ if __name__ == '__main__':
 
     if args.debug:
         args.name = 'debug'
-        args.strategy = 'replay'
-        # args.anchor = 'worse'
+        args.strategy = 'naive'
+        args.anchor = 'worse'
         args.n_epoch = 1
-        args.strategy_checkpoint = '../results/checkpoints/replay/exp_4_strat.pt'
+        # args.strategy_checkpoint = '../results/checkpoints/replay/exp_4_strat.pt'
     print(args)
     train(args)
