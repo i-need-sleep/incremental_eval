@@ -66,9 +66,12 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
                     emb_worse_anchors.append(self.anchor_preds[key])
                 
                 emb_worse_anchors = torch.stack(emb_worse_anchors).to(self.device)
-                loss = self.loss(src_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \
-                    + self.loss(ref_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \
-                    + self.anchor_loss_scale * self.loss(emb_worse_anchors, neg_sentemb, torch.zeros_like(pos_sentemb))
+                # Use L2 since we don't have negative examples
+                criterion = torch.nn.MSELoss()
+                loss = criterion(src_sentemb, pos_sentemb) \
+                    + criterion(ref_sentemb, pos_sentemb) \
+                    + self.anchor_loss_scale * criterion(emb_worse_anchors, neg_sentemb)
+                print(f'Loss: {loss}, Anchor loss: {self.anchor_loss_scale * criterion(emb_worse_anchors, neg_sentemb)}')
             except:
                 print('Worse emb not found!!!')
                 loss = self.loss(src_sentemb, pos_sentemb, torch.zeros_like(neg_sentemb)) \

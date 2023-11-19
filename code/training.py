@@ -97,7 +97,7 @@ def train(args):
         if i < exp_counter:
             continue
 
-        if args.anchor == 'worse' and (i > 0 or args.debug):
+        if args.anchor == 'worse' and i > 0:
             # Get the predcitions on the training set
             anchor_preds = eval(model, eval_on_train_scenario.train_stream, args, i, save=False, eval_exp_idx=i)
             model.anchor_preds = anchor_preds
