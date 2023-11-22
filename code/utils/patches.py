@@ -78,6 +78,41 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
                 print('Worse emb not found!!!')
                 loss = self.loss(src_sentemb, pos_sentemb, neg_sentemb) \
                     + self.loss(ref_sentemb, pos_sentemb, neg_sentemb)
+                
+        elif self.anchor == 'score_diff':
+            pos_anchors = torch.zeros_like(pos_sentemb).to(self.device)
+            neg_anchors = torch.zeros_like(neg_sentemb).to(self.device)
+            pos_anchor_mask = torch.zeros_like(pos_sentemb).to(self.device)
+            neg_anchor_mask = torch.zeros_like(neg_sentemb).to(self.device)
+
+            for i in range(src_sentemb.shape[0]):
+                key = batch['pos_input_ids'][i]
+                # Remove 1 paddings
+                key = str(key[key != 1])
+                if key in self.anchor_preds:
+                    pos_anchors[i] = self.anchor_preds[key]
+                    pos_anchor_mask[i] = 1
+
+                key = batch['neg_input_ids'][i]
+                # Remove 1 paddings
+                key = str(key[key != 1])
+                if key in self.anchor_preds:
+                    neg_anchors[i] = self.anchor_preds[key]
+                    neg_anchor_mask[i] = 1
+
+            pos_anchor_size = max(pos_anchor_mask[:, 0].sum(), 1)
+            neg_anchor_size = max(neg_anchor_mask[:, 0].sum(), 1)
+            batch_size = src_sentemb.shape[0]
+            
+            criterion = torch.nn.MSELoss()
+            # Rescale for the number of anchors
+            anchor_loss = criterion(pos_anchors * pos_anchor_mask, pos_sentemb * pos_anchor_mask) / pos_anchor_size * batch_size \
+                        + criterion(neg_anchors * neg_anchor_mask, neg_sentemb * neg_anchor_mask) / neg_anchor_size * batch_size
+
+            loss = self.loss(src_sentemb, pos_sentemb, neg_sentemb) \
+                    + self.loss(ref_sentemb, pos_sentemb, neg_sentemb) \
+                    + self.anchor_loss_scale * anchor_loss
+
         else:
             raise NotImplementedError
 

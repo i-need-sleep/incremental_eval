@@ -13,6 +13,7 @@ from avalanche.training.checkpoint import maybe_load_checkpoint, save_checkpoint
 
 import utils.data_utils as data_utils
 import utils.patches as patches
+import utils.misc_utils as misc_utils
 import utils.globals as uglobals
 
 def train(args):
@@ -22,7 +23,7 @@ def train(args):
 
     # Data
     scenario = data_utils.make_scenario(debug=args.debug, oracle=args.strategy == 'oracle')
-    if args.anchor == 'worse':
+    if args.anchor in ['worse', 'score_diff']:
         eval_on_train_scenario = data_utils.make_eval_on_train_scenario(debug=args.debug, oracle=args.strategy == 'oracle')
 
     # Model
@@ -92,30 +93,34 @@ def train(args):
     # Patch the strategy
     patches.patch(args, strategy, model, scenario, strategy_type=args.strategy, anchor=args.anchor)
 
+    # Make/clean up the checkpoint and output directories
+    checkpoint_dir = os.path.join(uglobals.CHECKPOINTS_DIR, args.name)
+    misc_utils.make_and_clean_up_dirs(checkpoint_dir)
+    output_dir = os.path.join(uglobals.OUTPUTS_DIR, args.name)
+    misc_utils.make_and_clean_up_dirs(output_dir)
+
     # Train
     for i, exp in enumerate(scenario.train_stream):
         if i < exp_counter:
             continue
 
-        if args.anchor == 'worse' and i > 0:
+        if args.anchor in ['worse', 'score_diff'] and (i > 0 or args.debug) :
             # Get the predcitions on the training set
             anchor_preds = eval(model, eval_on_train_scenario.train_stream, args, i, save=False, eval_exp_idx=i)
             model.anchor_preds = anchor_preds
             model.anchor = args.anchor
             print(f'Anchor Len {len(anchor_preds)}')
-
+            
         print(f'Training {i}')
         model.train()
         strategy.train(exp)
 
         # Save the checkpoint
-        save_dir = os.path.join(uglobals.CHECKPOINTS_DIR, args.name)
-        os.makedirs(save_dir, exist_ok=True)
-        save_path = os.path.join(save_dir, f'exp_{i}.pt')
+        save_path = os.path.join(checkpoint_dir, f'exp_{i}.pt')
         torch.save({'model_state_dict': model.state_dict()}, save_path)
 
         # Save the strategy
-        strategy_save_path = os.path.join(save_dir, f'exp_{i}_strat.pt')
+        strategy_save_path = os.path.join(checkpoint_dir, f'exp_{i}_strat.pt')
         save_checkpoint(strategy, strategy_save_path, exclude=['model'])
         print(f'Strategy saved at: {strategy_save_path}')
         
@@ -136,7 +141,8 @@ def eval(model, test_stream, args, training_idx, save=True, eval_exp_idx=None):
         with torch.no_grad():
             model_outs = []
             scores = []
-            out = {} # {pred, model_out, score}
+            out_keys = [] # input_ids
+            out = {} # {input_ids: emb}
             for i, batch in enumerate(loader): 
                 # src, ref, pred, score, placeholder
 
@@ -165,6 +171,7 @@ def eval(model, test_stream, args, training_idx, save=True, eval_exp_idx=None):
                     # Remove 1 paddings
                     key = str(key[key != 1])
                     out[key] = emb[idx]
+                    out_keys.append(key)
 
         # Get pearson correlation
         pearson = pearsonr(model_outs, scores).statistic * -1 # COMET-RANK is a distance metric, so we need to invert the correlation
@@ -173,9 +180,31 @@ def eval(model, test_stream, args, training_idx, save=True, eval_exp_idx=None):
         # Save the output
         if save:
             save_dir = os.path.join(uglobals.OUTPUTS_DIR, args.name)
-            os.makedirs(save_dir, exist_ok=True)
             save_path = os.path.join(save_dir, f'train_{training_idx}_test_{exp_idx}_pearson_{round(pearson, 3)}.pt')
             torch.save({'model_outs': model_outs, 'scores': scores}, save_path)
+
+        if args.anchor == 'score_diff':
+            # Normalize the model and human scores
+            model_outs = np.array(model_outs)
+            scores = np.array(scores)
+            model_outs = (model_outs - np.mean(model_outs)) / np.std(model_outs)
+            scores = (scores - np.mean(scores)) / np.std(scores)
+
+            # Get the absolute score differences
+            score_diff = abs(scores - model_outs)
+
+            # Find the indices of the top score_diffs
+            top_score_diffs = np.argsort(score_diff)[-args.score_diff_anchor_size:]
+
+            # Keep only the items associated with the top score_diffs
+            out_keys = np.array(out_keys)
+            out_keys = out_keys[top_score_diffs]
+            out_keys = out_keys.tolist()
+            
+            out_out = {}
+            for key in out_keys:
+                out_out[key] = out[key]
+            out = out_out
 
     return out
 
@@ -190,8 +219,9 @@ if __name__ == '__main__':
     # Strategy
     parser.add_argument('--strategy', default='', type=str) # naive, ewc, replay, oracle
 
-    parser.add_argument('--anchor', default='', type=str) # worse
+    parser.add_argument('--anchor', default='', type=str) # worse, score_diff
     parser.add_argument('--anchor_loss_scale', default='1', type=float)
+    parser.add_argument('--score_diff_anchor_size', default='3000', type=int)
 
     parser.add_argument('--ewc_lambda', default='0.4', type=float)
     parser.add_argument('--replay_size', default='1000', type=int)
@@ -209,8 +239,9 @@ if __name__ == '__main__':
     if args.debug:
         args.name = 'debug'
         args.strategy = 'naive'
-        args.anchor = 'worse'
+        args.anchor = 'score_diff'
         args.n_epoch = 1
+        args.score_diff_anchor_size = 5
         # args.strategy_checkpoint = '../results/checkpoints/replay/exp_4_strat.pt'
     print(args)
     train(args)
