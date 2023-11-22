@@ -110,7 +110,7 @@ def train(args):
             model.anchor_preds = anchor_preds
             model.anchor = args.anchor
             print(f'Anchor Len {len(anchor_preds)}')
-            
+
         print(f'Training {i}')
         model.train()
         strategy.train(exp)
@@ -193,10 +193,10 @@ def eval(model, test_stream, args, training_idx, save=True, eval_exp_idx=None):
             # Get the absolute score differences
             score_diff = abs(scores - model_outs)
 
-            # Find the indices of the top score_diffs
-            top_score_diffs = np.argsort(score_diff)[-args.score_diff_anchor_size:]
+            # Find the indices of the smallest score_diffs
+            top_score_diffs = np.argsort(score_diff)[: args.score_diff_anchor_size]
 
-            # Keep only the items associated with the top score_diffs
+            # Keep only the items associated with the smalleset score_diffs
             out_keys = np.array(out_keys)
             out_keys = out_keys[top_score_diffs]
             out_keys = out_keys.tolist()
