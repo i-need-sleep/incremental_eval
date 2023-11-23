@@ -135,6 +135,7 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
             "distance_pos": distance_pos,
             "distance_neg": distance_neg,
             'embedding_neg': neg_sentemb,
+            'embedding_pos': pos_sentemb,
         }
     
     def patched_criterion(self):
@@ -218,6 +219,27 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
         except:
             return [('“作为一名教练，我要告诉是时候开始另一场比赛了。”',) * len(x), ('"As a coach, I would tell you it\'s time to run another play."',) * len(x), ("'As a coach, I'm going to tell it's time to start another game.'",) * len(x), torch.tensor([0 for _ in x])]
 
+    def lwf_distillation_loss(self, out, prev_out, active_units):
+        """Compute distillation loss between output of the current model and
+        and output of the previous (saved) model.
+        """
+        # we compute the loss only on the previously active units.
+        au = list(active_units)
+
+        # some people use the crossentropy instead of the KL
+        # They are equivalent. We compute
+        # kl_div(log_p_curr, p_prev) = p_prev * (log (p_prev / p_curr)) =
+        #   p_prev * log(p_prev) - p_prev * log(p_curr).
+        # Now, the first term is constant (we don't optimize the teacher),
+        # so optimizing the crossentropy and kl-div are equivalent.
+        # log_p = torch.log_softmax(out[:, au] / self.temperature, dim=1)
+        # q = torch.softmax(prev_out[:, au] / self.temperature, dim=1)
+        # res = torch.nn.functional.kl_div(log_p, q, reduction="batchmean")
+        
+        criterion = torch.nn.MSELoss()
+        res = criterion(out['embedding_pos'], prev_out['embedding_pos'].detach()) + criterion(out['embedding_neg'], prev_out['embedding_neg'].detach())
+        return res
+    
     # Patch stuff
     model.anchor = ''
     model.anchor_loss_scale = args.anchor_loss_scale
@@ -227,6 +249,8 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
 
     if strategy_type == 'ewc':
         strategy.plugins[0].compute_importances = types.MethodType(patched_ewc_compute_importances, strategy.plugins[0])
+    if strategy_type == 'lwf':
+        strategy.plugins[0].lwf._distillation_loss = types.MethodType(lwf_distillation_loss, strategy.plugins[0].lwf)
 
     # Dirty fix
     for i, exp in enumerate(scenario.train_stream):
@@ -239,6 +263,10 @@ def patch(args, strategy, model, scenario, strategy_type, anchor):
 
     avalanche.training.Replay.patched_unpack_minibatch = patched_unpack_minibatch
     avalanche.training.Replay.patched_criterion = patched_criterion
+
+    avalanche.training.regularization.LearningWithoutForgetting.lwf_distillation_loss = lwf_distillation_loss
+    avalanche.training.LwF.patched_unpack_minibatch = patched_unpack_minibatch
+    avalanche.training.LwF.patched_criterion = patched_criterion
     
     comet.models.RankingMetric.patched_forward = patched_forward
     

@@ -76,6 +76,22 @@ def train(args):
             ),
             mem_size=args.replay_size,
         )
+    elif args.strategy == 'lwf':
+        strategy = avalanche.training.LwF(
+            model=model,
+            optimizer=torch.optim.Adam(model.parameters(), lr=args.lr), # Use a plain optimizer for simplicity (no scheduler, different lrs, freezing enc, etc.)
+            criterion=None, # We use the criterion in the model
+            alpha=args.lwf_alpha,
+            temperature=args.lwf_temperature,
+            train_mb_size=args.batch_size,
+            train_epochs=args.n_epoch,
+            eval_mb_size=args.batch_size,
+            device=device,
+            evaluator=avalanche.training.plugins.EvaluationPlugin(
+                avalanche.evaluation.metrics.loss_metrics(minibatch=False, epoch=True, experience=True, stream=True), # Only log the loss for training
+                loggers=[avalanche.logging.InteractiveLogger()],
+            ),
+        )
     else:
         raise NotImplementedError
     
@@ -217,7 +233,7 @@ if __name__ == '__main__':
     parser.add_argument('--debug', action='store_true')
 
     # Strategy
-    parser.add_argument('--strategy', default='', type=str) # naive, ewc, replay, oracle
+    parser.add_argument('--strategy', default='', type=str) # naive, ewc, replay, oracle, lwf
 
     parser.add_argument('--anchor', default='', type=str) # worse, score_diff
     parser.add_argument('--anchor_loss_scale', default='1', type=float)
@@ -225,6 +241,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--ewc_lambda', default='0.4', type=float)
     parser.add_argument('--replay_size', default='1000', type=int)
+    parser.add_argument('--lwf_alpha', default='1', type=float)
+    parser.add_argument('--lwf_temperature', default='1', type=float)
 
     # Training
     parser.add_argument('--lr', default='3e-6', type=float)
@@ -238,8 +256,8 @@ if __name__ == '__main__':
 
     if args.debug:
         args.name = 'debug'
-        args.strategy = 'naive'
-        args.anchor = 'score_diff'
+        args.strategy = 'lwf'
+        args.anchor = ''
         args.n_epoch = 1
         args.score_diff_anchor_size = 5
         # args.strategy_checkpoint = '../results/checkpoints/replay/exp_4_strat.pt'
