@@ -82,7 +82,7 @@ def train(args):
             optimizer=torch.optim.Adam(model.parameters(), lr=args.lr), # Use a plain optimizer for simplicity (no scheduler, different lrs, freezing enc, etc.)
             criterion=None, # We use the criterion in the model
             alpha=args.lwf_alpha,
-            temperature=args.lwf_temperature,
+            temperature=1,
             train_mb_size=args.batch_size,
             train_epochs=args.n_epoch,
             eval_mb_size=args.batch_size,
@@ -242,7 +242,6 @@ if __name__ == '__main__':
     parser.add_argument('--ewc_lambda', default='0.4', type=float)
     parser.add_argument('--replay_size', default='1000', type=int)
     parser.add_argument('--lwf_alpha', default='1', type=float)
-    parser.add_argument('--lwf_temperature', default='1', type=float)
 
     # Training
     parser.add_argument('--lr', default='3e-6', type=float)
