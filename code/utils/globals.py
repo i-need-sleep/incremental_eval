@@ -2,6 +2,7 @@
 DATA_DIR = '../data'
 RAW_DIR = f'{DATA_DIR}/raw'
 PROCESSED_DIR = f'{DATA_DIR}/processed'
+TXT_DIR = f'{DATA_DIR}/txt'
 
 # Results
 RESULTS_DIR = '../results'
